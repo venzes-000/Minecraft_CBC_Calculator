@@ -780,9 +780,7 @@
       for (let angleDeg = SOLVER_MIN_DEG; angleDeg <= SOLVER_MAX_DEG + 1.0E-9; angleDeg += SOLVER_STEP_DEG) {
         const elevation = rad(angleDeg);
         const sim = simulateAtDistance(horizontalDistance, heightDifference, elevation, inputs);
-        if (sim) {
-          samples.push({ elevation, error: sim.error, sim });
-        }
+        samples.push({ elevation, error: sim?.error ?? null, sim });
       }
 
       const roots = [];
@@ -790,13 +788,20 @@
         const a = samples[i - 1];
         const b = samples[i];
 
-        if (Math.abs(a.error) < 1.0E-4) {
+        if (a.sim && Math.abs(a.error) < 1.0E-4) {
           roots.push(refineRoot(horizontalDistance, heightDifference, a.elevation, a.elevation, inputs));
           continue;
         }
 
-        if (a.error === 0 || b.error === 0 || Math.sign(a.error) !== Math.sign(b.error)) {
+        if (a.sim && b.sim && (a.error === 0 || b.error === 0 || Math.sign(a.error) !== Math.sign(b.error))) {
           roots.push(refineRoot(horizontalDistance, heightDifference, a.elevation, b.elevation, inputs));
+          continue;
+        }
+
+        if (a.sim && !b.sim) {
+          roots.push(refineReachabilityEdgeRoot(horizontalDistance, heightDifference, a.elevation, b.elevation, inputs));
+        } else if (!a.sim && b.sim) {
+          roots.push(refineReachabilityEdgeRoot(horizontalDistance, heightDifference, b.elevation, a.elevation, inputs));
         }
       }
 
@@ -817,6 +822,44 @@
         low: uniqueRoots[0],
         high: uniqueRoots.length > 1 ? uniqueRoots[uniqueRoots.length - 1] : null
       };
+    }
+
+    function refineReachabilityEdgeRoot(horizontalDistance, heightDifference, reachableElevation, missingElevation, inputs) {
+      const startSim = simulateAtDistance(horizontalDistance, heightDifference, reachableElevation, inputs);
+      if (!startSim) {
+        return null;
+      }
+
+      let reachable = reachableElevation;
+      let missing = missingElevation;
+      let edgeSim = startSim;
+
+      for (let i = 0; i < 54; i++) {
+        const mid = (reachable + missing) / 2;
+        const midSim = simulateAtDistance(horizontalDistance, heightDifference, mid, inputs);
+        if (midSim) {
+          reachable = mid;
+          edgeSim = midSim;
+        } else {
+          missing = mid;
+        }
+      }
+
+      if (Math.abs(edgeSim.error) < 1.0E-4) {
+        return makeArc(reachable, edgeSim);
+      }
+
+      if (Math.sign(startSim.error) !== Math.sign(edgeSim.error)) {
+        return refineRoot(
+          horizontalDistance,
+          heightDifference,
+          Math.min(reachableElevation, reachable),
+          Math.max(reachableElevation, reachable),
+          inputs
+        );
+      }
+
+      return null;
     }
 
     function refineRoot(horizontalDistance, heightDifference, lowElevation, highElevation, inputs) {
@@ -880,7 +923,14 @@
       return { source, dx, dy, dz, horizontal, angles };
     }
 
-    function preferredArc(angles, preferred) {
+    function selectedArc(angles, preferred) {
+      if (!angles?.reachable) {
+        return null;
+      }
+      return preferred === "high" ? angles.high : angles.low;
+    }
+
+    function arcForMuzzleIteration(angles, preferred) {
       if (!angles?.reachable) {
         return null;
       }
@@ -895,7 +945,7 @@
 
       for (let i = 0; i < iterations; i++) {
         solved = solveFromSource(source, inputs);
-        const arc = preferredArc(solved.angles, inputs.preferredArc);
+        const arc = arcForMuzzleIteration(solved.angles, inputs.preferredArc);
         if (!arc || !inputs.useBarrelLength || inputs.barrelLength <= 0) {
           break;
         }
@@ -964,10 +1014,11 @@
       }
 
       const yaw = mountYaw(solved.dx, solved.dz);
-      const selected = preferredArc(solved.angles, inputs.preferredArc);
+      const selected = selectedArc(solved.angles, inputs.preferredArc);
       const alternate = inputs.preferredArc === "high" ? solved.angles.low : solved.angles.high;
-      setStatus(el.status, "Calculated", selected?.inMountRange ? "ok" : "bad");
-      setStatus(el.resultStatus, selected?.inMountRange ? "Reachable" : "Angle limit", selected?.inMountRange ? "ok" : "bad");
+      const selectedOk = Boolean(selected?.inMountRange);
+      setStatus(el.status, "Calculated", selectedOk ? "ok" : "bad");
+      setStatus(el.resultStatus, selectedOk ? "Reachable" : (selected ? "Angle limit" : `No ${inputs.preferredArc} arc`), selectedOk ? "ok" : "bad");
       el.yawValue.textContent = `${format(yaw)} deg`;
       el.bearingValue.textContent = selected ? `${format(selected.elevationDeg)} deg` : "--";
       el.distanceValue.textContent = `${format(solved.horizontal, 2)} m`;
@@ -976,7 +1027,9 @@
       updateArc("low", solved.angles.low, solved.source.y);
       updateArc("high", solved.angles.high, solved.source.y);
 
-      if (selected?.inMountRange) {
+      if (!selected) {
+        el.note.textContent = `${inputs.preferredArc === "high" ? "High" : "Low"} arc has no solution for these inputs. ${alternate ? `The other arc is available at pitch ${format(alternate.elevationDeg)} deg.` : "No alternate arc is available."}`;
+      } else if (selected.inMountRange) {
         el.note.textContent = `Use mount yaw ${format(yaw)} deg clockwise and mount pitch ${format(selected.elevationDeg)} deg. CBC sim uses gravity ${format(inputs.gravityTicks, 3)} blocks/tick^2 and drag ${format(inputs.drag, 3)}.`;
       } else if (alternate?.inMountRange) {
         el.note.textContent = `Selected ${inputs.preferredArc} arc needs elevation ${format(selected?.elevationDeg)} deg, outside the mount limit. Switch arc mode to use mount pitch ${format(alternate.elevationDeg)} deg.`;
@@ -1126,7 +1179,7 @@
       if (!latestResult?.solved?.angles?.reachable) return;
       const { inputs, solved } = latestResult;
       const yaw = mountYaw(solved.dx, solved.dz);
-      const chosen = preferredArc(solved.angles, inputs.preferredArc);
+      const chosen = selectedArc(solved.angles, inputs.preferredArc);
       if (!chosen) return;
 
       const text = [
