@@ -1,0 +1,1198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CBC Ballistics Calculator</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #11161c;
+      --surface: #171f27;
+      --surface-2: #1e2933;
+      --line: #354454;
+      --muted: #9caeba;
+      --text: #edf4f6;
+      --accent: #65d6b5;
+      --accent-2: #e6bc62;
+      --danger: #ff7c7c;
+      --ok: #8de17f;
+      --shadow: rgba(0, 0, 0, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 240px),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.1;
+      font-weight: 780;
+    }
+
+    .subtitle {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .button {
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+      color: var(--text);
+      min-height: 38px;
+      padding: 0 13px;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+
+    .button:hover {
+      border-color: var(--accent);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 48px var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 48px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 740;
+      color: var(--text);
+    }
+
+    .status {
+      min-height: 26px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+
+    .status.ok {
+      color: var(--ok);
+      border-color: rgba(141, 225, 127, 0.45);
+    }
+
+    .status.bad {
+      color: var(--danger);
+      border-color: rgba(255, 124, 124, 0.45);
+    }
+
+    .form {
+      padding: 16px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .fieldset {
+      display: grid;
+      gap: 10px;
+    }
+
+    .legend {
+      font-size: 12px;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 760;
+    }
+
+    .coords {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .label-text {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 680;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 39px;
+      border-radius: 7px;
+      border: 1px solid var(--line);
+      background: #0f151b;
+      color: var(--text);
+      padding: 0 10px;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(101, 214, 181, 0.12);
+    }
+
+    .checkrow {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--muted);
+      font-size: 13px;
+      min-height: 34px;
+    }
+
+    .checkrow input {
+      width: 17px;
+      height: 17px;
+      min-height: 17px;
+      accent-color: var(--accent);
+    }
+
+    .results {
+      display: grid;
+      gap: 18px;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .metric {
+      min-height: 86px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.025);
+      padding: 12px;
+      display: grid;
+      align-content: space-between;
+      gap: 8px;
+    }
+
+    .metric.wide {
+      grid-column: 1 / -1;
+    }
+
+    .metric-name {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      line-height: 1.05;
+      font-weight: 780;
+      overflow-wrap: anywhere;
+    }
+
+    .metric-value.small {
+      font-size: 16px;
+      line-height: 1.25;
+      font-weight: 680;
+      color: var(--text);
+    }
+
+    .arcs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      padding: 0 16px 16px;
+    }
+
+    .arc {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #10171d;
+      overflow: hidden;
+    }
+
+    .arc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 42px;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .arc-name {
+      font-weight: 760;
+      font-size: 13px;
+    }
+
+    .arc.low .arc-name {
+      color: var(--accent);
+    }
+
+    .arc.high .arc-name {
+      color: var(--accent-2);
+    }
+
+    .arc-body {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--line);
+    }
+
+    .arc-cell {
+      background: #10171d;
+      padding: 11px;
+      min-height: 68px;
+    }
+
+    .arc-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 7px;
+    }
+
+    .arc-number {
+      font-size: 18px;
+      font-weight: 780;
+    }
+
+    .canvas-wrap {
+      padding: 16px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 420px;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0c1116;
+    }
+
+    .note {
+      padding: 0 16px 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .warning {
+      color: var(--danger);
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        padding: 16px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .toolbar {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .coords,
+      .two-col,
+      .result-grid,
+      .arcs {
+        grid-template-columns: 1fr;
+      }
+
+      .metric.wide {
+        grid-column: auto;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      canvas {
+        height: 340px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1>CBC Ballistics Calculator</h1>
+        <div class="subtitle">Create Big Cannons angle helper for mount coords, target coords, velocity, gravity, and barrel length.</div>
+      </div>
+      <div class="toolbar">
+        <button class="button" id="sampleButton" type="button">Load sample</button>
+        <button class="button" id="copyButton" type="button">Copy result</button>
+      </div>
+    </header>
+
+    <section class="grid">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Inputs</div>
+          <div class="status" id="status">Ready</div>
+        </div>
+        <form class="form" id="calculatorForm">
+          <div class="fieldset">
+            <div class="legend">Cannon Mount</div>
+            <div class="coords">
+              <label>
+                <span class="label-text">X</span>
+                <input id="mountX" type="number" step="0.01" value="0">
+              </label>
+              <label>
+                <span class="label-text">Y</span>
+                <input id="mountY" type="number" step="0.01" value="64">
+              </label>
+              <label>
+                <span class="label-text">Z</span>
+                <input id="mountZ" type="number" step="0.01" value="0">
+              </label>
+            </div>
+          </div>
+
+          <div class="fieldset">
+            <div class="legend">Impact Target</div>
+            <div class="coords">
+              <label>
+                <span class="label-text">X</span>
+                <input id="targetX" type="number" step="0.01" value="420">
+              </label>
+              <label>
+                <span class="label-text">Y</span>
+                <input id="targetY" type="number" step="0.01" value="70">
+              </label>
+              <label>
+                <span class="label-text">Z</span>
+                <input id="targetZ" type="number" step="0.01" value="260">
+              </label>
+            </div>
+          </div>
+
+          <div class="fieldset">
+            <div class="legend">Shot Settings</div>
+            <div class="two-col">
+              <label>
+                <span class="label-text">Total velocity, m/s</span>
+                <input id="velocity" type="number" step="0.01" min="0.01" value="900">
+              </label>
+              <label>
+                <span class="label-text">Cannon length, blocks</span>
+                <input id="barrelLength" type="number" step="0.01" min="0" value="0">
+              </label>
+            </div>
+            <div class="two-col">
+              <label>
+                <span class="label-text">Barrel axis Y offset</span>
+                <input id="barrelYOffset" type="number" step="0.01" value="2">
+              </label>
+              <label>
+                <span class="label-text">CBC drag</span>
+                <input id="drag" type="number" step="0.001" min="0" value="0.01">
+              </label>
+            </div>
+            <div class="two-col">
+              <label>
+                <span class="label-text">Gravity, blocks/tick^2</span>
+                <input id="gravityTicks" type="number" step="0.001" min="0.001" value="0.05">
+              </label>
+              <label>
+                <span class="label-text">Gravity, m/s^2</span>
+                <input id="gravityMeters" type="number" step="0.01" min="0.01" value="20">
+              </label>
+            </div>
+            <label>
+              <span class="label-text">Preferred arc</span>
+              <select id="preferredArc">
+                <option value="low">Low arc</option>
+                <option value="high">High arc</option>
+              </select>
+            </label>
+            <label class="checkrow">
+              <input id="useBarrelLength" type="checkbox" checked>
+              <span>Use cannon length as muzzle offset</span>
+            </label>
+            <label class="checkrow">
+              <input id="quadraticDrag" type="checkbox">
+              <span>Use quadratic drag</span>
+            </label>
+          </div>
+        </form>
+      </div>
+
+      <div class="results">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Result</div>
+            <div class="status ok" id="resultStatus">Reachable</div>
+          </div>
+          <div class="result-grid">
+            <div class="metric">
+              <div class="metric-name">Mount yaw, clockwise</div>
+              <div class="metric-value" id="yawValue">0.00 deg</div>
+            </div>
+            <div class="metric">
+              <div class="metric-name">Selected mount pitch</div>
+              <div class="metric-value" id="bearingValue">0.00 deg</div>
+            </div>
+            <div class="metric">
+              <div class="metric-name">Horizontal distance</div>
+              <div class="metric-value" id="distanceValue">0.00 m</div>
+            </div>
+            <div class="metric">
+              <div class="metric-name">Height difference</div>
+              <div class="metric-value" id="heightValue">0.00 m</div>
+            </div>
+            <div class="metric wide">
+              <div class="metric-name">Muzzle position after length correction</div>
+              <div class="metric-value small" id="muzzleValue">X 0.00, Y 64.00, Z 0.00</div>
+            </div>
+          </div>
+          <div class="arcs">
+            <div class="arc low">
+              <div class="arc-header">
+                <div class="arc-name">Low Arc</div>
+                <div class="status" id="lowStatus">OK</div>
+              </div>
+              <div class="arc-body">
+                <div class="arc-cell">
+                  <div class="arc-label">Elevation</div>
+                  <div class="arc-number" id="lowElevation">0.00 deg</div>
+                </div>
+                <div class="arc-cell">
+                  <div class="arc-label">Final pitch</div>
+                  <div class="arc-number" id="lowPitch">OK</div>
+                </div>
+                <div class="arc-cell">
+                  <div class="arc-label">Flight time</div>
+                  <div class="arc-number" id="lowTime">0.00 s</div>
+                </div>
+                <div class="arc-cell">
+                  <div class="arc-label">Apex</div>
+                  <div class="arc-number" id="lowApex">0.00 m</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="arc high">
+              <div class="arc-header">
+                <div class="arc-name">High Arc</div>
+                <div class="status" id="highStatus">OK</div>
+              </div>
+              <div class="arc-body">
+                <div class="arc-cell">
+                  <div class="arc-label">Elevation</div>
+                  <div class="arc-number" id="highElevation">0.00 deg</div>
+                </div>
+                <div class="arc-cell">
+                  <div class="arc-label">Final pitch</div>
+                  <div class="arc-number" id="highPitch">OK</div>
+                </div>
+                <div class="arc-cell">
+                  <div class="arc-label">Flight time</div>
+                  <div class="arc-number" id="highTime">0.00 s</div>
+                </div>
+                <div class="arc-cell">
+                  <div class="arc-label">Apex</div>
+                  <div class="arc-number" id="highApex">0.00 m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="note" id="note">CBC solid shot defaults here are gravity 0.05 blocks/tick^2 and drag 0.01. Mount elevation is limited to -30.00 deg through 60.00 deg.</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Trajectory Preview</div>
+            <div class="status" id="scaleStatus">Auto scale</div>
+          </div>
+          <div class="canvas-wrap">
+            <canvas id="trajectory" width="1200" height="520"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const TICKS_PER_SECOND = 20;
+    const MIN_ELEVATION_DEG = -30;
+    const MAX_ELEVATION_DEG = 60;
+    const SOLVER_MIN_DEG = -89;
+    const SOLVER_MAX_DEG = 89;
+    const SOLVER_STEP_DEG = 0.5;
+    const MAX_SIM_TICKS = 24000;
+
+    const ids = [
+      "mountX", "mountY", "mountZ", "targetX", "targetY", "targetZ",
+      "velocity", "barrelLength", "barrelYOffset", "gravityTicks",
+      "gravityMeters", "drag", "preferredArc", "useBarrelLength",
+      "quadraticDrag"
+    ];
+
+    const el = Object.fromEntries([
+      ...ids,
+      "status", "resultStatus", "yawValue", "bearingValue", "distanceValue",
+      "heightValue", "muzzleValue", "lowStatus", "lowElevation", "lowPitch",
+      "lowTime", "lowApex", "highStatus", "highElevation", "highPitch",
+      "highTime", "highApex", "note", "trajectory", "scaleStatus",
+      "sampleButton", "copyButton"
+    ].map((id) => [id, document.getElementById(id)]));
+
+    let syncingGravity = false;
+    let latestResult = null;
+
+    function number(id) {
+      const value = Number(el[id].value);
+      return Number.isFinite(value) ? value : 0;
+    }
+
+    function deg(rad) {
+      return rad * 180 / Math.PI;
+    }
+
+    function rad(degValue) {
+      return degValue * Math.PI / 180;
+    }
+
+    function format(value, digits = 2) {
+      if (!Number.isFinite(value)) return "--";
+      return value.toFixed(digits);
+    }
+
+    function signedFormat(value, digits = 2) {
+      if (!Number.isFinite(value)) return "--";
+      return `${value >= 0 ? "+" : ""}${value.toFixed(digits)}`;
+    }
+
+    function clockwiseDegrees(angle) {
+      return ((angle % 360) + 360) % 360;
+    }
+
+    function mountYaw(dx, dz) {
+      return clockwiseDegrees(deg(Math.atan2(-dx, dz)));
+    }
+
+    function mountPitch(elevationDeg) {
+      return clockwiseDegrees(-elevationDeg);
+    }
+
+    function inMountElevationRange(elevationDeg) {
+      return elevationDeg >= MIN_ELEVATION_DEG && elevationDeg <= MAX_ELEVATION_DEG;
+    }
+
+    function readInputs() {
+      return {
+        mount: { x: number("mountX"), y: number("mountY"), z: number("mountZ") },
+        target: { x: number("targetX"), y: number("targetY"), z: number("targetZ") },
+        velocity: Math.max(0, number("velocity")),
+        barrelLength: Math.max(0, number("barrelLength")),
+        barrelYOffset: number("barrelYOffset"),
+        gravityTicks: Math.max(0.000001, number("gravityTicks")),
+        gravity: Math.max(0.0001, number("gravityMeters")),
+        drag: Math.max(0, number("drag")),
+        quadraticDrag: el.quadraticDrag.checked,
+        preferredArc: el.preferredArc.value,
+        useBarrelLength: el.useBarrelLength.checked
+      };
+    }
+
+    function baseSource(inputs) {
+      return {
+        x: inputs.mount.x,
+        y: inputs.mount.y + inputs.barrelYOffset,
+        z: inputs.mount.z
+      };
+    }
+
+    function acceleration(vh, vy, inputs) {
+      const speed = Math.hypot(vh, vy);
+      if (speed < 1.0E-9) {
+        return { ah: 0, ay: -inputs.gravityTicks };
+      }
+
+      let dragForce = inputs.drag * speed;
+      if (inputs.quadraticDrag) {
+        dragForce *= speed;
+      }
+      dragForce = Math.min(dragForce, speed);
+
+      return {
+        ah: -(vh / speed) * dragForce,
+        ay: -(vy / speed) * dragForce - inputs.gravityTicks
+      };
+    }
+
+    function simulateAtDistance(horizontalDistance, heightDifference, elevation, inputs, keepPath = false) {
+      if (inputs.velocity <= 0 || inputs.gravityTicks <= 0) {
+        return null;
+      }
+
+      if (horizontalDistance < 1.0E-7) {
+        return null;
+      }
+
+      const speedPerTick = inputs.velocity / TICKS_PER_SECOND;
+      let horizontal = 0;
+      let y = 0;
+      let vh = Math.cos(elevation) * speedPerTick;
+      let vy = Math.sin(elevation) * speedPerTick;
+      let apexGain = 0;
+      const points = keepPath ? [{ horizontal: 0, y: 0 }] : null;
+
+      for (let tick = 0; tick < MAX_SIM_TICKS; tick++) {
+        const a = acceleration(vh, vy, inputs);
+        const nextHorizontal = horizontal + vh + 0.5 * a.ah;
+        const nextY = y + vy + 0.5 * a.ay;
+
+        if (keepPath) {
+          points.push({ horizontal: nextHorizontal, y: nextY });
+        }
+
+        apexGain = Math.max(apexGain, nextY);
+
+        if (nextHorizontal >= horizontalDistance && nextHorizontal > horizontal) {
+          const fraction = (horizontalDistance - horizontal) / (nextHorizontal - horizontal);
+          const impactY = y + (nextY - y) * fraction;
+          if (keepPath && points.length > 0) {
+            points[points.length - 1] = { horizontal: horizontalDistance, y: impactY };
+          }
+          return {
+            reached: true,
+            error: impactY - heightDifference,
+            yAtTarget: impactY,
+            time: (tick + fraction) / TICKS_PER_SECOND,
+            apexGain: Math.max(apexGain, impactY),
+            points
+          };
+        }
+
+        vh += a.ah;
+        vy += a.ay;
+        horizontal = nextHorizontal;
+        y = nextY;
+
+        if (!Number.isFinite(horizontal) || !Number.isFinite(y) || vh <= 1.0E-7 && horizontal < horizontalDistance) {
+          break;
+        }
+      }
+
+      return null;
+    }
+
+    function makeArc(elevation, sim) {
+      const elevationDeg = deg(elevation);
+      return {
+        elevation,
+        elevationDeg,
+        mountPitchDeg: mountPitch(elevationDeg),
+        inMountRange: inMountElevationRange(elevationDeg),
+        time: sim.time,
+        apexGain: sim.apexGain
+      };
+    }
+
+    function solveAngles(horizontalDistance, heightDifference, inputs) {
+      const samples = [];
+
+      for (let angleDeg = SOLVER_MIN_DEG; angleDeg <= SOLVER_MAX_DEG + 1.0E-9; angleDeg += SOLVER_STEP_DEG) {
+        const elevation = rad(angleDeg);
+        const sim = simulateAtDistance(horizontalDistance, heightDifference, elevation, inputs);
+        if (sim) {
+          samples.push({ elevation, error: sim.error, sim });
+        }
+      }
+
+      const roots = [];
+      for (let i = 1; i < samples.length; i++) {
+        const a = samples[i - 1];
+        const b = samples[i];
+
+        if (Math.abs(a.error) < 1.0E-4) {
+          roots.push(refineRoot(horizontalDistance, heightDifference, a.elevation, a.elevation, inputs));
+          continue;
+        }
+
+        if (a.error === 0 || b.error === 0 || Math.sign(a.error) !== Math.sign(b.error)) {
+          roots.push(refineRoot(horizontalDistance, heightDifference, a.elevation, b.elevation, inputs));
+        }
+      }
+
+      const uniqueRoots = roots
+        .filter(Boolean)
+        .sort((a, b) => a.elevation - b.elevation)
+        .filter((root, index, array) => index === 0 || Math.abs(root.elevation - array[index - 1].elevation) > rad(0.03));
+
+      if (uniqueRoots.length === 0) {
+        return {
+          reachable: false,
+          reason: "No firing angle was found for this velocity, gravity, drag, and distance."
+        };
+      }
+
+      return {
+        reachable: true,
+        low: uniqueRoots[0],
+        high: uniqueRoots.length > 1 ? uniqueRoots[uniqueRoots.length - 1] : null
+      };
+    }
+
+    function refineRoot(horizontalDistance, heightDifference, lowElevation, highElevation, inputs) {
+      if (Math.abs(highElevation - lowElevation) < 1.0E-12) {
+        const sim = simulateAtDistance(horizontalDistance, heightDifference, lowElevation, inputs);
+        return sim ? makeArc(lowElevation, sim) : null;
+      }
+
+      let lo = lowElevation;
+      let hi = highElevation;
+      let loSim = simulateAtDistance(horizontalDistance, heightDifference, lo, inputs);
+      let hiSim = simulateAtDistance(horizontalDistance, heightDifference, hi, inputs);
+
+      if (!loSim || !hiSim) {
+        return null;
+      }
+
+      for (let i = 0; i < 36; i++) {
+        const mid = (lo + hi) / 2;
+        const midSim = simulateAtDistance(horizontalDistance, heightDifference, mid, inputs);
+        if (!midSim) {
+          break;
+        }
+
+        if (Math.abs(midSim.error) < 1.0E-5) {
+          return makeArc(mid, midSim);
+        }
+
+        if (Math.sign(loSim.error) === Math.sign(midSim.error)) {
+          lo = mid;
+          loSim = midSim;
+        } else {
+          hi = mid;
+          hiSim = midSim;
+        }
+      }
+
+      const elevation = (lo + hi) / 2;
+      const sim = simulateAtDistance(horizontalDistance, heightDifference, elevation, inputs);
+      return sim ? makeArc(elevation, sim) : null;
+    }
+
+    function directionVector(dx, dz, elevation) {
+      const horizontal = Math.hypot(dx, dz);
+      const ux = horizontal > 1e-7 ? dx / horizontal : 0;
+      const uz = horizontal > 1e-7 ? dz / horizontal : 0;
+      const cos = Math.cos(elevation);
+      return {
+        x: ux * cos,
+        y: Math.sin(elevation),
+        z: uz * cos
+      };
+    }
+
+    function solveFromSource(source, inputs) {
+      const dx = inputs.target.x - source.x;
+      const dy = inputs.target.y - source.y;
+      const dz = inputs.target.z - source.z;
+      const horizontal = Math.hypot(dx, dz);
+      const angles = solveAngles(horizontal, dy, inputs);
+      return { source, dx, dy, dz, horizontal, angles };
+    }
+
+    function preferredArc(angles, preferred) {
+      if (!angles?.reachable) {
+        return null;
+      }
+      return preferred === "high" ? (angles.high || angles.low) : angles.low;
+    }
+
+    function solveWithMuzzleOffset(inputs) {
+      const base = baseSource(inputs);
+      let source = { ...base };
+      let solved = null;
+      const iterations = inputs.useBarrelLength && inputs.barrelLength > 0 ? 7 : 1;
+
+      for (let i = 0; i < iterations; i++) {
+        solved = solveFromSource(source, inputs);
+        const arc = preferredArc(solved.angles, inputs.preferredArc);
+        if (!arc || !inputs.useBarrelLength || inputs.barrelLength <= 0) {
+          break;
+        }
+
+        const dir = directionVector(solved.dx, solved.dz, arc.elevation);
+        source = {
+          x: base.x + dir.x * inputs.barrelLength,
+          y: base.y + dir.y * inputs.barrelLength,
+          z: base.z + dir.z * inputs.barrelLength
+        };
+      }
+
+      return solveFromSource(source, inputs);
+    }
+
+    function setStatus(node, text, kind) {
+      node.textContent = text;
+      node.classList.toggle("ok", kind === "ok");
+      node.classList.toggle("bad", kind === "bad");
+    }
+
+    function updateArc(prefix, arc, sourceY) {
+      if (!arc) {
+        clearArc(prefix);
+        return;
+      }
+
+      el[`${prefix}Status`].textContent = arc.inMountRange ? "OK" : "Limit";
+      el[`${prefix}Status`].classList.toggle("bad", !arc.inMountRange);
+      el[`${prefix}Status`].classList.toggle("ok", arc.inMountRange);
+      el[`${prefix}Elevation`].textContent = `${format(arc.elevationDeg)} deg`;
+      el[`${prefix}Pitch`].textContent = `${format(arc.elevationDeg)} deg`;
+      el[`${prefix}Time`].textContent = `${format(arc.time)} s`;
+      el[`${prefix}Apex`].textContent = `Y ${format(sourceY + arc.apexGain, 2)}`;
+    }
+
+    function clearArc(prefix) {
+      el[`${prefix}Status`].textContent = "No arc";
+      el[`${prefix}Status`].classList.add("bad");
+      el[`${prefix}Status`].classList.remove("ok");
+      el[`${prefix}Elevation`].textContent = "--";
+      el[`${prefix}Pitch`].textContent = "--";
+      el[`${prefix}Time`].textContent = "--";
+      el[`${prefix}Apex`].textContent = "--";
+    }
+
+    function calculate() {
+      const inputs = readInputs();
+      const solved = solveWithMuzzleOffset(inputs);
+      latestResult = { inputs, solved };
+
+      if (!solved || !solved.angles.reachable) {
+        const reason = solved?.angles?.reason || "No valid solution.";
+        setStatus(el.status, "Check inputs", "bad");
+        setStatus(el.resultStatus, "Unreachable", "bad");
+        el.yawValue.textContent = "--";
+        el.bearingValue.textContent = "--";
+        el.distanceValue.textContent = `${format(solved?.horizontal ?? 0, 2)} m`;
+        el.heightValue.textContent = `${signedFormat(solved?.dy ?? 0, 2)} m`;
+        el.muzzleValue.textContent = `X ${format(solved?.source?.x ?? inputs.mount.x, 2)}, Y ${format(solved?.source?.y ?? inputs.mount.y, 2)}, Z ${format(solved?.source?.z ?? inputs.mount.z, 2)}`;
+        clearArc("low");
+        clearArc("high");
+        el.note.innerHTML = `<span class="warning">${reason}</span>`;
+        drawTrajectory(inputs, solved);
+        return;
+      }
+
+      const yaw = mountYaw(solved.dx, solved.dz);
+      const selected = preferredArc(solved.angles, inputs.preferredArc);
+      const alternate = inputs.preferredArc === "high" ? solved.angles.low : solved.angles.high;
+      setStatus(el.status, "Calculated", selected?.inMountRange ? "ok" : "bad");
+      setStatus(el.resultStatus, selected?.inMountRange ? "Reachable" : "Angle limit", selected?.inMountRange ? "ok" : "bad");
+      el.yawValue.textContent = `${format(yaw)} deg`;
+      el.bearingValue.textContent = selected ? `${format(selected.elevationDeg)} deg` : "--";
+      el.distanceValue.textContent = `${format(solved.horizontal, 2)} m`;
+      el.heightValue.textContent = `${signedFormat(solved.dy, 2)} m`;
+      el.muzzleValue.textContent = `X ${format(solved.source.x, 2)}, Y ${format(solved.source.y, 2)}, Z ${format(solved.source.z, 2)}`;
+      updateArc("low", solved.angles.low, solved.source.y);
+      updateArc("high", solved.angles.high, solved.source.y);
+
+      if (selected?.inMountRange) {
+        el.note.textContent = `Use mount yaw ${format(yaw)} deg clockwise and mount pitch ${format(selected.elevationDeg)} deg. CBC sim uses gravity ${format(inputs.gravityTicks, 3)} blocks/tick^2 and drag ${format(inputs.drag, 3)}.`;
+      } else if (alternate?.inMountRange) {
+        el.note.textContent = `Selected ${inputs.preferredArc} arc needs elevation ${format(selected?.elevationDeg)} deg, outside the mount limit. Switch arc mode to use mount pitch ${format(alternate.elevationDeg)} deg.`;
+      } else {
+        el.note.textContent = `Both arcs are outside the mount elevation limit of ${format(MIN_ELEVATION_DEG)} deg to ${format(MAX_ELEVATION_DEG)} deg.`;
+      }
+
+      drawTrajectory(inputs, solved);
+    }
+
+    function simulatePath(horizontalDistance, elevation, inputs) {
+      const sim = simulateAtDistance(horizontalDistance, 0, elevation, inputs, true);
+      return sim?.points || [];
+    }
+
+    function drawTrajectory(inputs, solved) {
+      const canvas = el.trajectory;
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.fillStyle = "#0c1116";
+      ctx.fillRect(0, 0, w, h);
+
+      if (!solved || !solved.angles.reachable) {
+        drawEmptyState(ctx, w, h, "No reachable trajectory");
+        return;
+      }
+
+      const arcs = [
+        { arc: solved.angles.low, color: "#65d6b5" },
+        { arc: solved.angles.high, color: "#e6bc62" }
+      ].filter((entry) => entry.arc);
+
+      const arcPoints = arcs.map((entry) => ({
+        ...entry,
+        points: simulatePath(solved.horizontal, entry.arc.elevation, inputs)
+      }));
+
+      const allPoints = arcPoints.flatMap((entry) => entry.points);
+      const maxHorizontal = Math.max(solved.horizontal, ...allPoints.map((p) => p.horizontal));
+      const minRelativeY = Math.min(0, solved.dy, ...allPoints.map((p) => p.y));
+      const maxRelativeY = Math.max(0, solved.dy, ...allPoints.map((p) => p.y));
+      const minY = solved.source.y + minRelativeY;
+      const maxY = solved.source.y + maxRelativeY;
+      const padX = 62;
+      const padY = 42;
+      const yRange = Math.max(8, maxY - minY);
+      const xScale = (w - padX * 2) / Math.max(1, maxHorizontal);
+      const yScale = (h - padY * 2) / yRange;
+
+      function sx(horizontal) {
+        return padX + horizontal * xScale;
+      }
+
+      function sy(y) {
+        return h - padY - (y - minY) * yScale;
+      }
+
+      drawGrid(ctx, w, h, padX, padY, minY, maxY, maxHorizontal, sx, sy);
+      for (const entry of arcPoints) {
+        drawArcPath(ctx, entry.points, solved.source.y, entry.color, sx, sy);
+      }
+
+      drawPoint(ctx, sx(0), sy(solved.source.y), "#edf4f6", "Muzzle");
+      drawPoint(ctx, sx(solved.horizontal), sy(inputs.target.y), "#ff7c7c", "Target");
+      el.scaleStatus.textContent = `Range ${format(maxHorizontal, 0)} m`;
+    }
+
+    function drawGrid(ctx, w, h, padX, padY, minY, maxY, maxHorizontal, sx, sy) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.fillStyle = "#9caeba";
+      ctx.lineWidth = 1;
+      ctx.font = "12px system-ui, sans-serif";
+
+      for (let i = 0; i <= 5; i++) {
+        const x = padX + (w - padX * 2) * i / 5;
+        ctx.beginPath();
+        ctx.moveTo(x, padY);
+        ctx.lineTo(x, h - padY);
+        ctx.stroke();
+        const distance = maxHorizontal * i / 5;
+        ctx.fillText(`${format(distance, 0)}m`, x - 14, h - 14);
+      }
+
+      for (let i = 0; i <= 5; i++) {
+        const yValue = minY + (maxY - minY) * i / 5;
+        const y = sy(yValue);
+        ctx.beginPath();
+        ctx.moveTo(padX, y);
+        ctx.lineTo(w - padX, y);
+        ctx.stroke();
+        ctx.fillText(`Y ${format(yValue, 0)}`, 12, y + 4);
+      }
+
+      ctx.strokeStyle = "rgba(255,255,255,0.28)";
+      ctx.strokeRect(padX, padY, w - padX * 2, h - padY * 2);
+      ctx.restore();
+    }
+
+    function drawArcPath(ctx, points, sourceY, color, sx, sy) {
+      if (points.length < 2) {
+        return;
+      }
+
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let i = 0; i < points.length; i++) {
+        const x = sx(points[i].horizontal);
+        const y = sy(sourceY + points[i].y);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawPoint(ctx, x, y, color, label) {
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.strokeStyle = "#0c1116";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#edf4f6";
+      ctx.font = "13px system-ui, sans-serif";
+      ctx.fillText(label, x + 11, y - 10);
+      ctx.restore();
+    }
+
+    function drawEmptyState(ctx, w, h, text) {
+      ctx.save();
+      ctx.fillStyle = "#9caeba";
+      ctx.font = "20px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(text, w / 2, h / 2);
+      ctx.restore();
+    }
+
+    function copyResult() {
+      if (!latestResult?.solved?.angles?.reachable) return;
+      const { inputs, solved } = latestResult;
+      const yaw = mountYaw(solved.dx, solved.dz);
+      const chosen = preferredArc(solved.angles, inputs.preferredArc);
+      if (!chosen) return;
+
+      const text = [
+        "CBC Ballistics Result",
+        `Yaw: ${format(yaw)} deg clockwise`,
+        `Arc: ${inputs.preferredArc}`,
+        `Mount pitch: ${format(chosen.elevationDeg)} deg`,
+        `Mount range: ${chosen.inMountRange ? "OK" : "OUT OF RANGE"}`,
+        `Flight time: ${format(chosen.time)} s`,
+        `Muzzle: X ${format(solved.source.x, 2)}, Y ${format(solved.source.y, 2)}, Z ${format(solved.source.z, 2)}`,
+        `Distance: ${format(solved.horizontal, 2)} m`,
+        `Gravity: ${format(inputs.gravityTicks, 3)} blocks/tick^2 / ${format(inputs.gravity, 2)} m/s^2`,
+        `Drag: ${format(inputs.drag, 3)}`,
+        `Velocity: ${format(inputs.velocity, 2)} m/s`
+      ].join("\n");
+
+      navigator.clipboard?.writeText(text);
+      setStatus(el.status, "Copied", "ok");
+    }
+
+    function loadSample() {
+      el.mountX.value = "0";
+      el.mountY.value = "64";
+      el.mountZ.value = "0";
+      el.targetX.value = "680";
+      el.targetY.value = "75";
+      el.targetZ.value = "280";
+      el.velocity.value = "900";
+      el.barrelLength.value = "24";
+      el.barrelYOffset.value = "2";
+      el.gravityTicks.value = "0.05";
+      el.gravityMeters.value = "20";
+      el.drag.value = "0.01";
+      el.preferredArc.value = "low";
+      el.useBarrelLength.checked = true;
+      el.quadraticDrag.checked = false;
+      calculate();
+    }
+
+    el.gravityTicks.addEventListener("input", () => {
+      if (syncingGravity) return;
+      syncingGravity = true;
+      const gTicks = Math.max(0, Number(el.gravityTicks.value) || 0);
+      el.gravityMeters.value = format(gTicks * TICKS_PER_SECOND * TICKS_PER_SECOND, 2);
+      syncingGravity = false;
+      calculate();
+    });
+
+    el.gravityMeters.addEventListener("input", () => {
+      if (syncingGravity) return;
+      syncingGravity = true;
+      const gMeters = Math.max(0, Number(el.gravityMeters.value) || 0);
+      el.gravityTicks.value = format(gMeters / (TICKS_PER_SECOND * TICKS_PER_SECOND), 3);
+      syncingGravity = false;
+      calculate();
+    });
+
+    for (const id of ids) {
+      if (id === "gravityTicks" || id === "gravityMeters") continue;
+      el[id].addEventListener("input", calculate);
+      el[id].addEventListener("change", calculate);
+    }
+
+    el.sampleButton.addEventListener("click", loadSample);
+    el.copyButton.addEventListener("click", copyResult);
+    calculate();
+  </script>
+</body>
+</html>
